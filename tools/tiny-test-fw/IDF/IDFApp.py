@@ -33,19 +33,23 @@ class IDFApp(App.BaseApp):
         super(IDFApp, self).__init__(app_path)
         self.idf_path = self.get_sdk_path()
         self.binary_path = self.get_binary_path(app_path)
+        self.elf_file = self._get_elf_file_path(self.binary_path)
         assert os.path.exists(self.binary_path)
-        if self.IDF_DOWNLOAD_CONFIG_FILE not in os.listdir(self.binary_path):
-            if self.IDF_FLASH_ARGS_FILE not in os.listdir(self.binary_path):
-                msg = ("Neither {} nor {} exists. "
-                       "Try to run 'make print_flash_cmd | tail -n 1 > {}/{}' "
-                       "or 'idf.py build' "
-                       "for resolving the issue."
-                       "").format(self.IDF_DOWNLOAD_CONFIG_FILE, self.IDF_FLASH_ARGS_FILE,
-                                  self.binary_path, self.IDF_DOWNLOAD_CONFIG_FILE)
-                raise AssertionError(msg)
+        sdkconfig_dict = self.get_sdkconfig()
+        if "CONFIG_APP_BUILD_GENERATE_BINARIES" in sdkconfig_dict:
+            # There are no flashing targets available when no binaries where generated.
+            if self.IDF_DOWNLOAD_CONFIG_FILE not in os.listdir(self.binary_path):
+                if self.IDF_FLASH_ARGS_FILE not in os.listdir(self.binary_path):
+                    msg = ("Neither {} nor {} exists. "
+                           "Try to run 'make print_flash_cmd | tail -n 1 > {}/{}' "
+                           "or 'idf.py build' "
+                           "for resolving the issue."
+                           "").format(self.IDF_DOWNLOAD_CONFIG_FILE, self.IDF_FLASH_ARGS_FILE,
+                                      self.binary_path, self.IDF_DOWNLOAD_CONFIG_FILE)
+                    raise AssertionError(msg)
 
-        self.flash_files, self.flash_settings = self._parse_flash_download_config()
-        self.partition_table = self._parse_partition_table()
+            self.flash_files, self.flash_settings = self._parse_flash_download_config()
+            self.partition_table = self._parse_partition_table()
 
     @classmethod
     def get_sdk_path(cls):
@@ -53,6 +57,35 @@ class IDFApp(App.BaseApp):
         assert idf_path
         assert os.path.exists(idf_path)
         return idf_path
+
+    def _get_sdkconfig_paths(self):
+        """
+        returns list of possible paths where sdkconfig could be found
+
+        Note: could be overwritten by a derived class to provide other locations or order
+        """
+        return [os.path.join(self.binary_path, "sdkconfig"), os.path.join(self.binary_path, "..", "sdkconfig")]
+
+    def get_sdkconfig(self):
+        """
+        reads sdkconfig and returns a dictionary with all configuredvariables
+
+        :param sdkconfig_file: location of sdkconfig
+        :raise: AssertionError: if sdkconfig file does not exist in defined paths
+        """
+        d = {}
+        sdkconfig_file = None
+        for i in self._get_sdkconfig_paths():
+            if os.path.exists(i):
+                sdkconfig_file = i
+                break
+        assert sdkconfig_file is not None
+        with open(sdkconfig_file) as f:
+            for line in f:
+                configs = line.split('=')
+                if len(configs) == 2:
+                    d[configs[0]] = configs[1].rstrip()
+        return d
 
     def get_binary_path(self, app_path):
         """
@@ -64,6 +97,15 @@ class IDFApp(App.BaseApp):
         :return: abs app binary path
         """
         pass
+
+    @staticmethod
+    def _get_elf_file_path(binary_path):
+        ret = ""
+        file_names = os.listdir(binary_path)
+        for fn in file_names:
+            if os.path.splitext(fn)[1] == ".elf":
+                ret = os.path.join(binary_path, fn)
+        return ret
 
     def _parse_flash_download_config(self):
         """
@@ -95,6 +137,11 @@ class IDFApp(App.BaseApp):
                     else:
                         # offs, filename
                         flash_files.append((args[idx], args[idx + 1]))
+
+        # The build metadata file does not currently have details, which files should be encrypted and which not.
+        # Assume that all files should be encrypted if flash encryption is enabled in development mode.
+        sdkconfig_dict = self.get_sdkconfig()
+        flash_settings["encrypt"] = "CONFIG_SECURE_FLASH_ENCRYPTION_MODE_DEVELOPMENT" in sdkconfig_dict
 
         # make file offsets into integers, make paths absolute
         flash_files = [(int(offs, 0), os.path.join(self.binary_path, path.strip())) for (offs, path) in flash_files]
@@ -153,6 +200,12 @@ class IDFApp(App.BaseApp):
 
 
 class Example(IDFApp):
+    def _get_sdkconfig_paths(self):
+        """
+        overrides the parent method to provide exact path of sdkconfig for example tests
+        """
+        return [os.path.join(self.binary_path, "..", "sdkconfig")]
+
     def get_binary_path(self, app_path):
         # build folder of example path
         path = os.path.join(self.idf_path, app_path, "build")

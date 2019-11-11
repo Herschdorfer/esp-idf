@@ -14,9 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
 import os
 import sys
-import argparse
+
 try:
     import pkg_resources
 except Exception:
@@ -32,6 +33,13 @@ def escape_backslash(path):
         return path.replace("\\", "\\\\")
     else:
         return path
+
+
+def is_virtualenv():
+    """Detects if current python is inside virtualenv, pyvenv (python 3.4-3.5) or venv"""
+
+    return (hasattr(sys, 'real_prefix') or
+            (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix))
 
 
 if __name__ == "__main__":
@@ -56,7 +64,15 @@ if __name__ == "__main__":
         print('The following Python requirements are not satisfied:')
         for requirement in not_satisfied:
             print(requirement)
-        if sys.platform == "win32" and os.environ.get("MSYSTEM", None) == "MINGW32" and "/mingw32/bin/python" in sys.executable:
+        if os.environ.get('IDF_PYTHON_ENV_PATH'):
+            # We are running inside a private virtual environment under IDF_TOOLS_PATH,
+            # ask the user to run install.bat again.
+            if sys.platform == "win32" and not os.environ.get("MSYSTEM"):
+                install_script = 'install.bat'
+            else:
+                install_script = 'install.sh'
+            print('To install the missing packages, please run "%s"' % os.path.join(idf_path, install_script))
+        elif sys.platform == "win32" and os.environ.get("MSYSTEM", None) == "MINGW32" and "/mingw32/bin/python" in sys.executable:
             print("The recommended way to install a packages is via \"pacman\". Please run \"pacman -Ss <package_name>\" for"
                   " searching the package database and if found then "
                   "\"pacman -S mingw-w64-i686-python{}-<package_name>\" for installing it.".format(sys.version_info[0],))
@@ -79,8 +95,10 @@ if __name__ == "__main__":
         else:
             print('Please refer to the Get Started section of the ESP-IDF Programming Guide for setting up the required'
                   ' packages.')
-        print('Alternatively, you can run "{} -m pip install --user -r {}" for resolving the issue.'
-              ''.format(escape_backslash(sys.executable), escape_backslash(args.requirements)))
+        print('Alternatively, you can run "{} -m pip install {}-r {}" for resolving the issue.'
+              ''.format(escape_backslash(sys.executable),
+                        '' if is_virtualenv() else '--user ',
+                        escape_backslash(args.requirements)))
         sys.exit(1)
 
     print('Python requirements from {} are satisfied.'.format(args.requirements))

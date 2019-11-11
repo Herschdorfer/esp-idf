@@ -54,7 +54,7 @@
 /* Return the 'flash_test' custom data partition (type 0x55)
    defined in the custom partition table.
 */
-const esp_partition_t *get_test_data_partition();
+const esp_partition_t *get_test_data_partition(void);
 
 /**
  * @brief Initialize reference clock
@@ -62,26 +62,26 @@ const esp_partition_t *get_test_data_partition();
  * Reference clock provides timestamps at constant 1 MHz frequency, even when
  * the APB frequency is changing.
  */
-void ref_clock_init();
+void ref_clock_init(void);
 
 /**
  * @brief Deinitialize reference clock
  */
-void ref_clock_deinit();
+void ref_clock_deinit(void);
 
 
 /**
  * @brief Get reference clock timestamp
  * @return number of microseconds since the reference clock was initialized
  */
-uint64_t ref_clock_get();
+uint64_t ref_clock_get(void);
 
 /**
  * @brief Entry point of the test application
  *
  * Starts Unity test runner in a separate task and returns.
  */
-void test_main();
+void test_main(void);
 
 /**
  * @brief Reset automatic leak checking which happens in unit tests.
@@ -107,9 +107,8 @@ void unity_reset_leak_checks(void);
  */
 void test_case_uses_tcpip(void);
 
-
 /**
- * @brief wait for signals.
+ * @brief wait for signals with parameters.
  *
  * for multiple devices test cases, DUT might need to wait for other DUTs before continue testing.
  * As all DUTs are independent, need user (or test script) interaction to make test synchronized.
@@ -136,13 +135,104 @@ void test_case_uses_tcpip(void);
  *
  * Then we press Enter key on DUT1's console, DUT1 starts to read input and then test success.
  *
+ * Another example, we have 2 DUTs in multiple devices test, and DUT1 need to get DUT2's mac address to perform BT connection.
+ * DUT1 should call `unity_wait_for_signal_param("dut2 mac address", mac, 19);` to wait for DUT2's mac address.
+ * DUT2 should call `unity_send_signal_param("dut2 mac address", "10:20:30:40:50:60");` to send to DUT1 its mac address.
+ * According to the console logs:
+ *
+ * DUT1 console:
+ *
+ * ```
+ *     Waiting for signal: [dut2 mac address]!
+ *     Please input parameter value from any board send this signal and press "Enter" key.
+ * ```
+ *
+ * DUT2 console:
+ *
+ * ```
+ *     Send signal: [dut2 mac address][10:20:30:40:50:60]!
+ * ```
+ *
  * @param signal_name signal name which DUT expected to wait before proceed testing
+ * @param parameter_buf buffer to receive parameter
+ * @param buf_len length of parameter_buf.
+ *                Currently we have a limitation that it will write 1 extra byte at the end of string.
+ *                We need to use a buffer with 2 bytes longer than actual string length.
  */
-void unity_wait_for_signal(const char* signal_name);
+void unity_wait_for_signal_param(const char* signal_name, char *parameter_buf, uint8_t buf_len);
 
 /**
- * @brief DUT send signal.
+ * @brief wait for signals.
+ *
+ * @param signal_name signal name which DUT expected to wait before proceed testing
+ */
+static inline void unity_wait_for_signal(const char* signal_name)
+{
+    unity_wait_for_signal_param(signal_name, NULL, 0);
+}
+
+/**
+ * @brief DUT send signal and pass parameter to other devices.
+ *
+ * @param signal_name signal name which DUT send once it finished preparing.
+ * @param parameter a string to let remote device to receive.
+ */
+void unity_send_signal_param(const char* signal_name, const char *parameter);
+
+/**
+ * @brief DUT send signal with parameter.
  *
  * @param signal_name signal name which DUT send once it finished preparing.
  */
-void unity_send_signal(const char* signal_name);
+static inline void unity_send_signal(const char* signal_name)
+{
+    unity_send_signal_param(signal_name, NULL);
+}
+
+/**
+ * @brief convert mac string to mac address
+ *
+ * @param mac_str MAC address string with format "xx:xx:xx:xx:xx:xx"
+ * @param[out] mac_addr store converted MAC address
+ */
+bool unity_util_convert_mac_from_string(const char* mac_str, uint8_t *mac_addr);
+
+/**
+ * @brief Leak for components
+ */
+typedef enum {
+    COMP_LEAK_GENERAL = 0,  /**< Leak by default */
+    COMP_LEAK_LWIP,         /**< Leak for LWIP */
+    COMP_LEAK_NVS,          /**< Leak for NVS */
+    COMP_LEAK_ALL,          /**< Use for getting the summary leak level */
+} esp_comp_leak_t;
+
+/**
+ * @brief Type of leak
+ */
+typedef enum {
+    TYPE_LEAK_WARNING = 0,  /**< Warning level of leak */
+    TYPE_LEAK_CRITICAL,     /**< Critical level of leak */
+    TYPE_LEAK_MAX,          /**< Max number of leak levels */
+} esp_type_leak_t;
+
+/**
+ * @brief Set a leak level for the required type and component.
+ *
+ * @param[in] leak_level Level of leak
+ * @param[in] type       Type of leak
+ * @param[in] component  Name of component
+ *
+ * return ESP_OK: Successful.
+ *        ESP_ERR_INVALID_ARG: Invalid argument.
+ */
+esp_err_t test_utils_set_leak_level(size_t leak_level, esp_type_leak_t type, esp_comp_leak_t component);
+
+/**
+ * @brief Get a leak level for the required type and component.
+ *
+ * @param[in] type       Type of leak.
+ * @param[in] component  Name of component. If COMP_LEAK_ALL, then the level will be summarized for all components.
+ * return Leak level
+ */
+size_t test_utils_get_leak_level(esp_type_leak_t type, esp_comp_leak_t component);

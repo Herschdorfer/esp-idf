@@ -23,7 +23,7 @@ extern "C" {
 #include <stdbool.h>
 #include "esp_err.h"
 #include "driver/gpio.h"
-#include "soc/adc_channel.h"
+#include "soc/adc_periph.h"
 
 typedef enum {
     ADC_ATTEN_DB_0   = 0,  /*!<The input voltage of ADC will be reduced to about 1/1 */
@@ -53,28 +53,34 @@ typedef enum {
 #define ADC_WIDTH_12Bit ADC_WIDTH_BIT_12
 
 typedef enum {
-    ADC1_CHANNEL_0 = 0, /*!< ADC1 channel 0 is GPIO36 */
-    ADC1_CHANNEL_1,     /*!< ADC1 channel 1 is GPIO37 */
-    ADC1_CHANNEL_2,     /*!< ADC1 channel 2 is GPIO38 */
-    ADC1_CHANNEL_3,     /*!< ADC1 channel 3 is GPIO39 */
-    ADC1_CHANNEL_4,     /*!< ADC1 channel 4 is GPIO32 */
-    ADC1_CHANNEL_5,     /*!< ADC1 channel 5 is GPIO33 */
-    ADC1_CHANNEL_6,     /*!< ADC1 channel 6 is GPIO34 */
-    ADC1_CHANNEL_7,     /*!< ADC1 channel 7 is GPIO35 */
+    ADC1_CHANNEL_0 = 0, /*!< ADC1 channel 0 is GPIO36 (ESP32), GPIO1 (ESP32-S2) */
+    ADC1_CHANNEL_1,     /*!< ADC1 channel 1 is GPIO37 (ESP32), GPIO2 (ESP32-S2) */
+    ADC1_CHANNEL_2,     /*!< ADC1 channel 2 is GPIO38 (ESP32), GPIO3 (ESP32-S2) */
+    ADC1_CHANNEL_3,     /*!< ADC1 channel 3 is GPIO39 (ESP32), GPIO4 (ESP32-S2) */
+    ADC1_CHANNEL_4,     /*!< ADC1 channel 4 is GPIO32 (ESP32), GPIO5 (ESP32-S2) */
+    ADC1_CHANNEL_5,     /*!< ADC1 channel 5 is GPIO33 (ESP32), GPIO6 (ESP32-S2) */
+    ADC1_CHANNEL_6,     /*!< ADC1 channel 6 is GPIO34 (ESP32), GPIO7 (ESP32-S2) */
+    ADC1_CHANNEL_7,     /*!< ADC1 channel 7 is GPIO35 (ESP32), GPIO8 (ESP32-S2) */
+#if CONFIG_IDF_TARGET_ESP32
     ADC1_CHANNEL_MAX,
+#elif CONFIG_IDF_TARGET_ESP32S2BETA
+    ADC1_CHANNEL_8,     /*!< ADC1 channel 6 is GPIO9  (ESP32-S2)*/
+    ADC1_CHANNEL_9,     /*!< ADC1 channel 7 is GPIO10 (ESP32-S2) */
+    ADC1_CHANNEL_MAX,
+#endif
 } adc1_channel_t;
 
 typedef enum {
-    ADC2_CHANNEL_0 = 0, /*!< ADC2 channel 0 is GPIO4 */
-    ADC2_CHANNEL_1,     /*!< ADC2 channel 1 is GPIO0 */
-    ADC2_CHANNEL_2,     /*!< ADC2 channel 2 is GPIO2 */
-    ADC2_CHANNEL_3,     /*!< ADC2 channel 3 is GPIO15 */
-    ADC2_CHANNEL_4,     /*!< ADC2 channel 4 is GPIO13 */
-    ADC2_CHANNEL_5,     /*!< ADC2 channel 5 is GPIO12 */
-    ADC2_CHANNEL_6,     /*!< ADC2 channel 6 is GPIO14 */
-    ADC2_CHANNEL_7,     /*!< ADC2 channel 7 is GPIO27 */
-    ADC2_CHANNEL_8,     /*!< ADC2 channel 8 is GPIO25 */
-    ADC2_CHANNEL_9,     /*!< ADC2 channel 9 is GPIO26 */
+    ADC2_CHANNEL_0 = 0, /*!< ADC2 channel 0 is GPIO4  (ESP32), GPIO11 (ESP32-S2) */
+    ADC2_CHANNEL_1,     /*!< ADC2 channel 1 is GPIO0  (ESP32), GPIO12 (ESP32-S2) */
+    ADC2_CHANNEL_2,     /*!< ADC2 channel 2 is GPIO2  (ESP32), GPIO13 (ESP32-S2) */
+    ADC2_CHANNEL_3,     /*!< ADC2 channel 3 is GPIO15 (ESP32), GPIO14 (ESP32-S2) */
+    ADC2_CHANNEL_4,     /*!< ADC2 channel 4 is GPIO13 (ESP32), GPIO15 (ESP32-S2) */
+    ADC2_CHANNEL_5,     /*!< ADC2 channel 5 is GPIO12 (ESP32), GPIO16 (ESP32-S2) */
+    ADC2_CHANNEL_6,     /*!< ADC2 channel 6 is GPIO14 (ESP32), GPIO17 (ESP32-S2) */
+    ADC2_CHANNEL_7,     /*!< ADC2 channel 7 is GPIO27 (ESP32), GPIO18 (ESP32-S2) */
+    ADC2_CHANNEL_8,     /*!< ADC2 channel 8 is GPIO25 (ESP32), GPIO19 (ESP32-S2) */
+    ADC2_CHANNEL_9,     /*!< ADC2 channel 9 is GPIO26 (ESP32), GPIO20 (ESP32-S2) */
     ADC2_CHANNEL_MAX,
 } adc2_channel_t;
 
@@ -212,30 +218,16 @@ esp_err_t adc1_config_channel_atten(adc1_channel_t channel, adc_atten_t atten);
  */
 int adc1_get_raw(adc1_channel_t channel);
 
-/** @cond */    //Doxygen command to hide deprecated function from API Reference
-/*
- * @note When the power switch of SARADC1, SARADC2, HALL sensor and AMP sensor is turned on,
- *       the input of GPIO36 and GPIO39 will be pulled down for about 80ns.
- *       When enabling power for any of these peripherals, ignore input from GPIO36 and GPIO39.
- *       Please refer to section 3.11 of 'ECO_and_Workarounds_for_Bugs_in_ESP32' for the description of this issue.
- *       
- * @deprecated This function returns an ADC1 reading but is deprecated due to
- * a misleading name and has been changed to directly call the new function.
- * Use the new function adc1_get_raw() instead
- */
-int adc1_get_voltage(adc1_channel_t channel) __attribute__((deprecated));
-/** @endcond */
-
 /**
  * @brief Enable ADC power
  */
-void adc_power_on();
+void adc_power_on(void);
 
 /**
  * @brief Power off SAR ADC
  * This function will force power down for ADC
  */
-void adc_power_off();
+void adc_power_off(void);
 
 /**
  * @brief Initialize ADC pad
@@ -292,7 +284,7 @@ esp_err_t adc_i2s_mode_init(adc_unit_t adc_unit, adc_channel_t channel);
  * Note that adc1_config_channel_atten, adc1_config_width functions need
  * to be called to configure ADC1 channels, before ADC1 is used by the ULP.
  */
-void adc1_ulp_enable();
+void adc1_ulp_enable(void);
 
 /**
  * @brief Read Hall Sensor
@@ -313,7 +305,7 @@ void adc1_ulp_enable();
  *
  * @return The hall sensor reading.
  */
-int hall_sensor_read();
+int hall_sensor_read(void);
 
 /**
  * @brief Get the gpio number of a specific ADC2 channel.

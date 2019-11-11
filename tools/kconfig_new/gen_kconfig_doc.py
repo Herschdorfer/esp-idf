@@ -21,8 +21,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import print_function
+import os
 import re
-import kconfiglib
+import sys
+
+try:
+    from . import kconfiglib
+except Exception:
+    sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+    import kconfiglib
 
 # Indentation to be used in the generated file
 INDENT = '    '
@@ -94,6 +101,8 @@ def format_rest_text(text, indent):
     # Escape some characters which are inline formatting in ReST
     text = text.replace("*", "\\*")
     text = text.replace("_", "\\_")
+    # replace absolute links to documentation by relative ones
+    text = re.sub(r'https://docs.espressif.com/projects/esp-idf/\w+/\w+/(.+)\.html', r':doc:`../\1`', text)
     text += '\n'
     return text
 

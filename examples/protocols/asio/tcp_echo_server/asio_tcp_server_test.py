@@ -6,6 +6,7 @@ import socket
 
 try:
     import IDF
+    from IDF.IDFDUT import ESP32DUT
 except ImportError:
     # this is a test case write with tiny-test-fw.
     # to run test cases outside tiny-test-fw,
@@ -29,7 +30,7 @@ def test_examples_protocol_asio_tcp_server(env, extra_data):
       5. Test evaluates received test message on server stdout
     """
     test_msg = b"echo message from client to server"
-    dut1 = env.get_dut("tcp_echo_server", "examples/protocols/asio/tcp_echo_server")
+    dut1 = env.get_dut("tcp_echo_server", "examples/protocols/asio/tcp_echo_server", dut_class=ESP32DUT)
     # check and log bin size
     binary_file = os.path.join(dut1.app.binary_path, "asio_tcp_echo_server.bin")
     bin_size = os.path.getsize(binary_file)
@@ -42,7 +43,7 @@ def test_examples_protocol_asio_tcp_server(env, extra_data):
     # 3. create tcp client and connect to server
     cli = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     cli.settimeout(30)
-    cli.connect((data[0],80))
+    cli.connect((data[0], 2222))
     cli.send(test_msg)
     data = cli.recv(1024)
     # 4. check the message received back from the server
@@ -51,7 +52,7 @@ def test_examples_protocol_asio_tcp_server(env, extra_data):
         pass
     else:
         print("Failure!")
-        raise ValueError('Wrong data received from asi tcp server: {} (expoected:{})'.format(data, test_msg))
+        raise ValueError('Wrong data received from asi tcp server: {} (expected:{})'.format(data, test_msg))
     # 5. check the client message appears also on server terminal
     dut1.expect(test_msg.decode())
 

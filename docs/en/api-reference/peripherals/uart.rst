@@ -22,7 +22,7 @@ The following overview describes functions and data types used to establish comm
 
 The minimum to make the UART working is to complete the first four steps, the last two steps are optional.
 
-The driver is identified by :cpp:type:`uart_port_t`, that corresponds to one of the tree UART controllers. Such identification is present in all the following function calls.
+The driver is identified by :cpp:type:`uart_port_t`, that corresponds to one of the three UART controllers. Such identification is present in all the following function calls.
 
 
 .. _uart-api-setting-communication-parameters:
@@ -169,7 +169,7 @@ The API provides a convenient way to handle specific interrupts discussed above 
 
 * **FIFO space threshold or transmission timeout reached** - the interrupts on TX or Rx FIFO buffer being filled with specific number of characters or on a timeout of sending or receiving data. To use these interrupts, first configure respective threshold values of the buffer length and the timeout by entering them in :cpp:type:`uart_intr_config_t` structure and calling :cpp:func:`uart_intr_config`. Then enable interrupts with functions :cpp:func:`uart_enable_rx_intr` and :cpp:func:`uart_enable_tx_intr`. To disable these interrupts there are corresponding functions :cpp:func:`uart_disable_rx_intr` or :cpp:func:`uart_disable_tx_intr`.
 
-* **Pattern detection** - an interrupt triggered on detecting a 'pattern' of the same character being sent number of times. The functions that allow to configure, enable and disable this interrupt are :cpp:func:`uart_enable_pattern_det_intr` and cpp:func:`uart_disable_pattern_det_intr`.
+* **Pattern detection** - an interrupt triggered on detecting a 'pattern' of the same character being sent number of times. The functions that allow to configure, enable and disable this interrupt are :cpp:func:`uart_enable_pattern_det_baud_intr` and cpp:func:`uart_disable_pattern_det_intr`.
 
 Macros
 ^^^^^^

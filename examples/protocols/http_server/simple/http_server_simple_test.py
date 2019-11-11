@@ -26,6 +26,7 @@ import random
 
 try:
     import IDF
+    from IDF.IDFDUT import ESP32DUT
 except ImportError:
     # This environment variable is expected on the host machine
     test_fw_path = os.getenv("TEST_FW_PATH")
@@ -49,7 +50,7 @@ client = Utility.load_source("client", expath + "/scripts/client.py")
 @IDF.idf_example_test(env_tag="Example_WIFI")
 def test_examples_protocol_http_server_simple(env, extra_data):
     # Acquire DUT
-    dut1 = env.get_dut("http_server", "examples/protocols/http_server/simple")
+    dut1 = env.get_dut("http_server", "examples/protocols/http_server/simple", dut_class=ESP32DUT)
 
     # Get binary file
     binary_file = os.path.join(dut1.app.binary_path, "simple.bin")
@@ -63,7 +64,7 @@ def test_examples_protocol_http_server_simple(env, extra_data):
 
     # Parse IP address of STA
     Utility.console_log("Waiting to connect with AP")
-    got_ip   = dut1.expect(re.compile(r"(?:[\s\S]*)Got IP: '(\d+.\d+.\d+.\d+)'"), timeout=120)[0]
+    got_ip = dut1.expect(re.compile(r"(?:[\s\S]*)IPv4 address: (\d+.\d+.\d+.\d+)"), timeout=30)[0]
     got_port = dut1.expect(re.compile(r"(?:[\s\S]*)Starting server on port: '(\d+)'"), timeout=30)[0]
 
     Utility.console_log("Got IP   : " + got_ip)
